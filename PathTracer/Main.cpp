@@ -16,16 +16,17 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include "teapotTestScene.h"
+#include "boyTestScene.h"
 
 static void glfw_error_callback(int error, const char* description)
 {
     fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
 
-
 using namespace glm;
 using namespace std;
-using namespace GLSLPathTracer;
+using namespace GLSLPT;
 
 float moveSpeed = 0.5f;
 float mouseSensitivity = 0.05f;
@@ -35,61 +36,6 @@ Renderer *renderer = nullptr;
 
 RenderOptions renderOptions;
 
-void loadScene(int index)
-{
-    static const char *sceneFilenames[] = { "cornell.scene",
-        "ajax.scene",
-        "bathroom.scene",
-        "boy.scene",
-        "coffee.scene",
-        "diningroom.scene",
-        "glassBoy.scene",
-        "hyperion.scene",
-        "rank3police.scene",
-        "spaceship.scene",
-        "staircase.scene" };
-
-    delete scene;
-	scene = LoadScene(std::string("./assets/")+sceneFilenames[index]);
-    scene->renderOptions = renderOptions;
-	if (!scene)
-	{
-		std::cout << "Unable to load scene\n";
-		exit(0);
-	}
-	std::cout << "Scene Loaded\n\n";
-
-	scene->buildBVH();
-
-	// --------Print info on memory usage ------------- //
-
-	std::cout << "Triangles: " << scene->triangleIndices.size() << std::endl;
-	std::cout << "Triangle Indices: " << scene->gpuBVH->bvhTriangleIndices.size() << std::endl;
-	std::cout << "Vertices: " << scene->vertexData.size() << std::endl;
-
-	long long scene_data_bytes =
-		sizeof(GPUBVHNode) * scene->gpuBVH->bvh->getNumNodes() +
-		sizeof(TriangleData) * scene->gpuBVH->bvhTriangleIndices.size() +
-		sizeof(VertexData) * scene->vertexData.size() +
-		sizeof(NormalTexData) * scene->normalTexData.size() +
-		sizeof(MaterialData) * scene->materialData.size() +
-		sizeof(LightData) * scene->lightData.size();
-
-	std::cout << "GPU Memory used for BVH and scene data: " << scene_data_bytes / 1048576 << " MB" << std::endl;
-
-	long long tex_data_bytes =
-		int(scene->texData.albedoTextureSize.x * scene->texData.albedoTextureSize.y) * scene->texData.albedoTexCount * 3 +
-		int(scene->texData.metallicRoughnessTextureSize.x * scene->texData.metallicRoughnessTextureSize.y) * scene->texData.metallicRoughnessTexCount * 3 +
-		int(scene->texData.normalTextureSize.x * scene->texData.normalTextureSize.y) * scene->texData.normalTexCount * 3 +
-		scene->hdrLoaderRes.width * scene->hdrLoaderRes.height * sizeof(GL_FLOAT) * 3;
-
-	std::cout << "GPU Memory used for Textures: " << tex_data_bytes / 1048576 << " MB" << std::endl;
-
-	std::cout << "Total GPU Memory used: " << (scene_data_bytes + tex_data_bytes) / 1048576 << " MB" << std::endl;
-
-	// ----------------------------------- //
-}
-
 bool initRenderer()
 {
     delete renderer;
@@ -97,13 +43,14 @@ bool initRenderer()
     {
         renderer = new TiledRenderer(scene, "../PathTracer/shaders/Tiled/");
     }
-    else if (scene->renderOptions.rendererType == Renderer_Progressive)
+    else 
+	if (scene->renderOptions.rendererType == Renderer_Progressive)
     {
         renderer = new ProgressiveRenderer(scene, "../PathTracer/shaders/Progressive/");
     }
 	else
 	{
-		Log("Invalid Renderer Type\n");
+		printf("Invalid Renderer Type\n");
         return false;
 	}
     renderer->init();
@@ -128,28 +75,27 @@ void render(GLFWwindow *window)
 void update(float secondsElapsed, GLFWwindow *window)
 {
 	renderer->update(secondsElapsed);
-	keyPressed = false;
+	scene->camera->isMoving = false;
 	//Camera Movement
 	if (glfwGetKey(window, 'W')){
 		scene->camera->offsetPosition(secondsElapsed * moveSpeed * scene->camera->forward);
-		keyPressed = true;
+		scene->camera->isMoving = true;
 	}
 	else if (glfwGetKey(window, 'S')){
 		scene->camera->offsetPosition(secondsElapsed * moveSpeed * -scene->camera->forward);
-		keyPressed = true;
+		scene->camera->isMoving = true;
 	}
     if (glfwGetKey(window, 'A')){
 		scene->camera->offsetPosition(secondsElapsed * moveSpeed * -scene->camera->right);
-		keyPressed = true;
+		scene->camera->isMoving = true;
 	}
 	else if (glfwGetKey(window, 'D')){
 		scene->camera->offsetPosition(secondsElapsed * moveSpeed * scene->camera->right);
-		keyPressed = true;
+		scene->camera->isMoving = true;
 	}
     
 	//Mouse Handling
-	scene->camera->isMoving = false;
-    if (!ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow) && ImGui::IsMouseDown(0))
+   if (!ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow) && ImGui::IsMouseDown(0))
     {
         ImVec2 mouseDelta = ImGui::GetMouseDragDelta();
         scene->camera->offsetOrientation(mouseSensitivity * mouseDelta.x, mouseSensitivity * mouseDelta.y);
@@ -162,11 +108,13 @@ void main()
 {
 	srand(unsigned int(time(0)));
 
-    int currentSceneIndex = 0;
-	loadScene(currentSceneIndex);
+	scene = new Scene();
+	loadBoyTestScene(scene);
 
+	renderOptions = scene->renderOptions;
 	GLFWwindow *window;
 	glfwInit();
+	
 	window = glfwCreateWindow((int)scene->renderOptions.resolution.x, (int)scene->renderOptions.resolution.y, "PathTracer", 0, 0);
 	glfwSetWindowPos(window, 300, 100);
 	//glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -221,14 +169,9 @@ void main()
         ImGui::NewFrame();
 
         {
-            ImGui::Begin("GLSL PathTracer");                          // Create a window called "Hello, world!" and append into it.
+            ImGui::Begin("GLSL PathTracer");  // Create a window called "Hello, world!" and append into it.
 
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-            if (ImGui::Combo("Scene", &currentSceneIndex, "cornell\0ajax\0bathroom\0boy\0coffee\0diningroom\0glassBoy\0hyperion\0rank3police\0spaceship\0staircase\0"))
-            {
-                loadScene(currentSceneIndex);
-                initRenderer();
-            }
 
             bool renderOptionsChanged = false;
             renderOptionsChanged |= ImGui::Combo("Render Type", &renderOptions.rendererType, "Progressive\0Tiled\0");

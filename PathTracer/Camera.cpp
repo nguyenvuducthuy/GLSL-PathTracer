@@ -1,7 +1,7 @@
 #include <Camera.h>
 #include <iostream>
 
-namespace GLSLPathTracer
+namespace GLSLPT
 {
     Camera::Camera(glm::vec3 pos, glm::vec3 lookAt, float fov)
     {

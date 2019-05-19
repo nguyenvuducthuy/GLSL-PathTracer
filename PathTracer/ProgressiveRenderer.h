@@ -2,7 +2,7 @@
 
 #include "Renderer.h"
 
-namespace GLSLPathTracer
+namespace GLSLPT
 {
     class Scene;
     class ProgressiveRenderer : public Renderer

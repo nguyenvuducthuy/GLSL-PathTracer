@@ -14,8 +14,8 @@ file(GLOB_RECURSE SRC_FILES
 file(GLOB EXT_FILES
     ${CMAKE_SOURCE_DIR}/thirdparty/SOIL/src/*.h
     ${CMAKE_SOURCE_DIR}/thirdparty/SOIL/src/*.c
-    ${CMAKE_SOURCE_DIR}/thirdparty/Nvidia-SBVH/src/*.h
-    ${CMAKE_SOURCE_DIR}/thirdparty/Nvidia-SBVH/src/*.cpp
+    ${CMAKE_SOURCE_DIR}/thirdparty/RadeonRays/*.h
+    ${CMAKE_SOURCE_DIR}/thirdparty/RadeonRays/*.cpp
     ${CMAKE_SOURCE_DIR}/thirdparty/imgui/*.h
     ${CMAKE_SOURCE_DIR}/thirdparty/imgui/*.cpp
 	${CMAKE_SOURCE_DIR}/thirdparty/glew/src/glew.c
@@ -25,7 +25,7 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/PathTracer
   ${CMAKE_SOURCE_DIR}/thirdparty/glm
   ${CMAKE_SOURCE_DIR}/thirdparty/imgui
-  ${CMAKE_SOURCE_DIR}/thirdparty/Nvidia-SBVH/src
+  ${CMAKE_SOURCE_DIR}/thirdparty/RadeonRays
   ${CMAKE_SOURCE_DIR}/thirdparty/glfw/include
   ${CMAKE_SOURCE_DIR}/thirdparty/glew/include
   ${CMAKE_SOURCE_DIR}/thirdparty/SOIL/include
@@ -37,6 +37,7 @@ link_directories(
 find_package(OpenGL)
 
 set(GLFW_LIBS glfw3.lib)
+set(LEGACY_STDIO_DEF legacy_stdio_definitions.lib)
 
 #######################################################################################
 

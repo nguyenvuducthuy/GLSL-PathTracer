@@ -2,7 +2,7 @@
 #include "ProgressiveRenderer.h"
 #include "Camera.h"
 #include "Scene.h"
-namespace GLSLPathTracer
+namespace GLSLPT
 {
     ProgressiveRenderer::ProgressiveRenderer(const Scene *scene, const std::string& shadersDirectory) : Renderer(scene, shadersDirectory)
         , maxDepth(scene->renderOptions.maxDepth)
@@ -54,7 +54,7 @@ namespace GLSLPathTracer
         //Create Half Res Texture for FBO
         glGenTextures(1, &pathTraceTextureHalf);
         glBindTexture(GL_TEXTURE_2D, pathTraceTextureHalf);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, screenSize.x / 2, screenSize.y / 2, 0, GL_RGB, GL_FLOAT, 0);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, screenSize.x / 4, screenSize.y / 4, 0, GL_RGB, GL_FLOAT, 0);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glBindTexture(GL_TEXTURE_2D, 0);
@@ -82,22 +82,27 @@ namespace GLSLPathTracer
         glUniform2f(glGetUniformLocation(shaderObject, "screenResolution"), float(screenSize.x), float(screenSize.y));
         glUniform1i(glGetUniformLocation(shaderObject, "numOfLights"), numOfLights);
         glUniform1i(glGetUniformLocation(shaderObject, "useEnvMap"), scene->renderOptions.useEnvMap);
-        glUniform1f(glGetUniformLocation(shaderObject, "hdrResolution"), float(scene->hdrLoaderRes.width * scene->hdrLoaderRes.height));
+        glUniform1f(glGetUniformLocation(shaderObject, "hdrResolution"), scene->hdrData == nullptr ? 0: float(scene->hdrData->width * scene->hdrData->height));
         glUniform1f(glGetUniformLocation(shaderObject, "hdrMultiplier"), scene->renderOptions.hdrMultiplier);
+		glUniform1i(glGetUniformLocation(shaderObject, "topBVHIndex"), scene->bvhTranslator.topLevelIndex);
 
         glUniform1i(glGetUniformLocation(shaderObject, "accumTexture"), 0);
         glUniform1i(glGetUniformLocation(shaderObject, "BVH"), 1);
-        glUniform1i(glGetUniformLocation(shaderObject, "triangleIndicesTex"), 2);
+        glUniform1i(glGetUniformLocation(shaderObject, "vertexIndicesTex"), 2);
         glUniform1i(glGetUniformLocation(shaderObject, "verticesTex"), 3);
-        glUniform1i(glGetUniformLocation(shaderObject, "normalsTexCoordsTex"), 4);
-        glUniform1i(glGetUniformLocation(shaderObject, "materialsTex"), 5);
-        glUniform1i(glGetUniformLocation(shaderObject, "lightsTex"), 6);
-        glUniform1i(glGetUniformLocation(shaderObject, "albedoTextures"), 7);
-        glUniform1i(glGetUniformLocation(shaderObject, "metallicRoughnessTextures"), 8);
-        glUniform1i(glGetUniformLocation(shaderObject, "normalTextures"), 9);
-        glUniform1i(glGetUniformLocation(shaderObject, "hdrTexture"), 10);
-        glUniform1i(glGetUniformLocation(shaderObject, "hdrMarginalDistTexture"), 11);
-        glUniform1i(glGetUniformLocation(shaderObject, "hdrCondDistTexture"), 12);
+		glUniform1i(glGetUniformLocation(shaderObject, "normalIndicesTex"), 4);
+        glUniform1i(glGetUniformLocation(shaderObject, "normalsTex"), 5);
+		glUniform1i(glGetUniformLocation(shaderObject, "uvIndicesTex"), 6);
+		glUniform1i(glGetUniformLocation(shaderObject, "uvTex"), 7);
+        glUniform1i(glGetUniformLocation(shaderObject, "materialsTex"), 8);
+		glUniform1i(glGetUniformLocation(shaderObject, "transformsTex"), 9);
+        glUniform1i(glGetUniformLocation(shaderObject, "lightsTex"), 10);
+        glUniform1i(glGetUniformLocation(shaderObject, "albedoMapTex"), 11);
+        glUniform1i(glGetUniformLocation(shaderObject, "metallicRoughnessMapTex"), 12);
+        glUniform1i(glGetUniformLocation(shaderObject, "normalMapTex"), 13);
+        glUniform1i(glGetUniformLocation(shaderObject, "hdrTex"), 14);
+        glUniform1i(glGetUniformLocation(shaderObject, "hdrMarginalDistTex"), 15);
+        glUniform1i(glGetUniformLocation(shaderObject, "hdrCondDistTex"), 16);
 
         pathTraceShader->stopUsing();
     }
@@ -127,7 +132,7 @@ namespace GLSLPathTracer
     {
         if (!initialized)
         {
-            Log("Tiled Renderer is not initialized\n");
+            printf("Tiled Renderer is not initialized\n");
             return;
         }
 
@@ -136,27 +141,35 @@ namespace GLSLPathTracer
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_BUFFER, BVHTexture);
         glActiveTexture(GL_TEXTURE2);
-        glBindTexture(GL_TEXTURE_BUFFER, triangleIndicesTexture);
+        glBindTexture(GL_TEXTURE_BUFFER, vertexIndicesTex);
         glActiveTexture(GL_TEXTURE3);
-        glBindTexture(GL_TEXTURE_BUFFER, verticesTexture);
-        glActiveTexture(GL_TEXTURE4);
-        glBindTexture(GL_TEXTURE_BUFFER, normalsTexCoordsTexture);
-        glActiveTexture(GL_TEXTURE5);
-        glBindTexture(GL_TEXTURE_BUFFER, materialsTexture);
-        glActiveTexture(GL_TEXTURE6);
-        glBindTexture(GL_TEXTURE_BUFFER, lightsTexture);
+        glBindTexture(GL_TEXTURE_BUFFER, verticesTex);
+		glActiveTexture(GL_TEXTURE4);
+		glBindTexture(GL_TEXTURE_BUFFER, normalIndicesTex);
+		glActiveTexture(GL_TEXTURE5);
+		glBindTexture(GL_TEXTURE_BUFFER, normalsTex);
+		glActiveTexture(GL_TEXTURE6);
+		glBindTexture(GL_TEXTURE_BUFFER, uvIndicesTex);
         glActiveTexture(GL_TEXTURE7);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, albedoTextures);
-        glActiveTexture(GL_TEXTURE8);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, metallicRoughnessTextures);
+		glBindTexture(GL_TEXTURE_BUFFER, uvTex);
+		glActiveTexture(GL_TEXTURE8);
+        glBindTexture(GL_TEXTURE_BUFFER, materialsTex);
         glActiveTexture(GL_TEXTURE9);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, normalTextures);
-        glActiveTexture(GL_TEXTURE10);
-        glBindTexture(GL_TEXTURE_2D, hdrTexture);
+		glBindTexture(GL_TEXTURE_BUFFER, transformsTex);
+		glActiveTexture(GL_TEXTURE10);
+        glBindTexture(GL_TEXTURE_BUFFER, lightsTex);
         glActiveTexture(GL_TEXTURE11);
-        glBindTexture(GL_TEXTURE_1D, hdrMarginalDistTexture);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, albedoMapTex);
         glActiveTexture(GL_TEXTURE12);
-        glBindTexture(GL_TEXTURE_2D, hdrConditionalDistTexture);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, metallicRoughnessMapTex);
+        glActiveTexture(GL_TEXTURE13);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, normalMapTex);
+        glActiveTexture(GL_TEXTURE14);
+        glBindTexture(GL_TEXTURE_2D, hdrTex);
+        glActiveTexture(GL_TEXTURE15);
+        glBindTexture(GL_TEXTURE_1D, hdrMarginalDistTex);
+        glActiveTexture(GL_TEXTURE16);
+        glBindTexture(GL_TEXTURE_2D, hdrConditionalDistTex);
 
         if (lowRes)
         {
@@ -166,7 +179,7 @@ namespace GLSLPathTracer
             glBindFramebuffer(GL_FRAMEBUFFER, accumFBO);
             glClear(GL_COLOR_BUFFER_BIT);
             glBindFramebuffer(GL_FRAMEBUFFER, pathTraceFBOHalf);
-            glViewport(0, 0, screenSize.x / 2, screenSize.y / 2);
+            glViewport(0, 0, screenSize.x / 4, screenSize.y / 4);
             quad->Draw(pathTraceShader);
         }
         else

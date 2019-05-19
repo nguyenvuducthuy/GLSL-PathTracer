@@ -2,11 +2,12 @@
 
 #include "Quad.h"
 #include "Program.h"
-#include "GPUBVH.h"
-#include "Loader.h"
 #include "SOIL.h"
 
-namespace GLSLPathTracer
+#include <glm/glm.hpp>
+#include <vector>
+
+namespace GLSLPT
 {
     Program *loadShaders(const std::string &vertex_shader_fileName, const std::string &frag_shader_fileName);
 
@@ -20,13 +21,13 @@ namespace GLSLPathTracer
     {
         RenderOptions()
         {
-            rendererType = Renderer_Tiled;
+            rendererType = Renderer_Progressive;
             maxSamples = 10;
             maxDepth = 2;
             numTilesX = 5;
             numTilesY = 5;
             useEnvMap = false;
-            resolution = glm::vec2(500, 500);
+            resolution = glm::vec2(1280, 720);
             hdrMultiplier = 1.0f;
         }
         //std::string rendererType;
@@ -39,14 +40,16 @@ namespace GLSLPathTracer
         bool useEnvMap;
         float hdrMultiplier;
     };
+
     class Scene;
+
     class Renderer
     {
     protected:
         const Scene *scene;
-        GLuint BVHTexture, triangleIndicesTexture, verticesTexture, materialsTexture, lightsTexture, normalsTexCoordsTexture;
-        GLuint albedoTextures, metallicRoughnessTextures, normalTextures, hdrTexture, hdrMarginalDistTexture, hdrConditionalDistTexture;
-        GLuint materialArrayBuffer, triangleBuffer, verticesBuffer, lightArrayBuffer, BVHBuffer, normalTexCoordBuffer;
+		GLuint BVHTexture, vertexIndicesTex, verticesTex, normalIndicesTex, normalsTex, uvIndicesTex, uvTex, materialsTex, transformsTex, lightsTex;
+        GLuint albedoMapTex, metallicRoughnessMapTex, normalMapTex, hdrTex, hdrMarginalDistTex, hdrConditionalDistTex;
+		GLuint materialsBuffer, transformsBuffer, vertexIndicesBuffer, verticesBuffer, normalIndicesBuffer, normalsBuffer, uvIndicesBuffer, uvBuffer, lightsBuffer, BVHBuffer;
         Quad *quad;
         int numOfLights;
         glm::ivec2 screenSize;
