@@ -48,7 +48,7 @@ namespace GLSLPT
     protected:
         const Scene *scene;
 		GLuint BVHTexture, vertexIndicesTex, verticesTex, normalIndicesTex, normalsTex, uvIndicesTex, uvTex, materialsTex, transformsTex, lightsTex;
-        GLuint albedoMapTex, metallicRoughnessMapTex, normalMapTex, hdrTex, hdrMarginalDistTex, hdrConditionalDistTex;
+        GLuint textureMapsArrayTex, hdrTex, hdrMarginalDistTex, hdrConditionalDistTex;
 		GLuint materialsBuffer, transformsBuffer, vertexIndicesBuffer, verticesBuffer, normalIndicesBuffer, normalsBuffer, uvIndicesBuffer, uvBuffer, lightsBuffer, BVHBuffer;
         Quad *quad;
         int numOfLights;

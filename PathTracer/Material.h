@@ -5,8 +5,6 @@
 
 namespace GLSLPT
 {
-	struct TexId;
-
 	class Material
 	{
 	public:
@@ -24,8 +22,6 @@ namespace GLSLPT
 			normalmapTexID = -1.0f;
 			heightmapTexID = -1.0f;
 		};
-
-		void setTexture(TexId texId);
 
 		glm::vec3 albedo;
 		float materialType;

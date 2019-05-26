@@ -10,11 +10,11 @@ namespace GLSLPT
 	void loadBoyTestScene(Scene* scene)
 	{
 		scene->renderOptions.maxDepth = 2;
-		scene->renderOptions.maxSamples = 20;
-		scene->renderOptions.numTilesY = 10;
-		scene->renderOptions.numTilesX = 10;
+		scene->renderOptions.maxSamples = 50;
+		scene->renderOptions.numTilesY = 5;
+		scene->renderOptions.numTilesX = 5;
 		scene->renderOptions.hdrMultiplier = 2.0f;
-		scene->renderOptions.rendererType = Renderer_Progressive;
+		scene->renderOptions.rendererType = Renderer_Tiled;
 		scene->addCamera(glm::vec3(0.3f, 0.11f, 0.0f), glm::vec3(0.2f, 0.095f, 0.0f), 35.0f);
 
 		int mesh_id1 = scene->addMesh("./assets/Figurine/head.obj");
@@ -27,23 +27,25 @@ namespace GLSLPT
 		Material base;
 		Material white;
 
-		TexId headAlbedo = scene->addTexture("./assets/Figurine/textures/01_Head_Base_Color.png", TextureType::albedo);
-		TexId bodyAlbedo = scene->addTexture("./assets/Figurine/textures/02_Body_Base_Color.png", TextureType::albedo);
-		TexId baseAlbedo = scene->addTexture("./assets/Figurine/textures/03_Base_Base_Color.png", TextureType::albedo);
-		TexId bgAlbedo = scene->addTexture("./assets/Figurine/textures/grid.jpg", TextureType::albedo);
+		int headAlbedo = scene->addTexture("./assets/Figurine/textures/01_Head_Base_Color.png");
+		int bodyAlbedo = scene->addTexture("./assets/Figurine/textures/02_Body_Base_Color.png");
+		int baseAlbedo = scene->addTexture("./assets/Figurine/textures/03_Base_Base_Color.png");
+		int bgAlbedo = scene->addTexture("./assets/Figurine/textures/grid.jpg");
 
-		TexId headMatRgh = scene->addTexture("./assets/Figurine/textures/01_Head_MetallicRoughness.png", TextureType::metallic_roughness);
-		TexId bodyMatRgh = scene->addTexture("./assets/Figurine/textures/02_Body_MetallicRoughness.png", TextureType::metallic_roughness);
-		TexId baseMatRgh = scene->addTexture("./assets/Figurine/textures/03_Base_MetallicRoughness.png", TextureType::metallic_roughness);
+		int headMatRgh = scene->addTexture("./assets/Figurine/textures/01_Head_MetallicRoughness.png");
+		int bodyMatRgh = scene->addTexture("./assets/Figurine/textures/02_Body_MetallicRoughness.png");
+		int baseMatRgh = scene->addTexture("./assets/Figurine/textures/03_Base_MetallicRoughness.png");
 
-		head.setTexture(headAlbedo);
-		body.setTexture(bodyAlbedo);
-		base.setTexture(baseAlbedo);
-		white.setTexture(bgAlbedo);
+		head.albedoTexID = headAlbedo;
+		head.metallicRoughnessTexID = headMatRgh;
 
-		head.setTexture(headMatRgh);
-		body.setTexture(bodyMatRgh);
-		base.setTexture(baseMatRgh);
+		body.albedoTexID = bodyAlbedo;
+		body.metallicRoughnessTexID = bodyMatRgh;
+
+		base.albedoTexID = baseAlbedo;
+		base.metallicRoughnessTexID = baseMatRgh;
+
+		white.albedoTexID = bgAlbedo;
 
 		int head_mat_id = scene->addMaterial(head);
 		int body_mat_id = scene->addMaterial(body);
@@ -70,17 +72,18 @@ namespace GLSLPT
 		int light2_id = scene->addLight(light2);
 
 		glm::mat4 xform;
-		//xform *= glm::scale(glm::vec3(10.0, 10.0, 10.0));
+		glm::mat4 xform2;
+		//xform2 = glm::translate(glm::vec3(0.0, -0.011, 0.0));
 
-		MeshInstance instance1(mesh_id1, xform, head_mat_id);
-		MeshInstance instance2(mesh_id2, xform, body_mat_id);
-		MeshInstance instance3(mesh_id3, xform, base_mat_id);
+		MeshInstance instance1(mesh_id1, xform2, head_mat_id);
+		MeshInstance instance2(mesh_id2, xform2, body_mat_id);
+		MeshInstance instance3(mesh_id3, xform2, base_mat_id);
 		MeshInstance instance4(mesh_id4, xform, white_mat_id);
 
 		scene->addMeshInstance(instance1);
 		scene->addMeshInstance(instance2);
 		scene->addMeshInstance(instance3);
-		//scene->addMeshInstance(instance4);
+		scene->addMeshInstance(instance4);
 
 		//scene->addHDR("./assets/ajax/sunset.hdr");
 

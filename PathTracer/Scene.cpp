@@ -41,45 +41,32 @@ namespace GLSLPT
 		return id;
 	}
 
-	TexId Scene::addTexture(const std::string& filename, TextureType type)
+	int Scene::addTexture(const std::string& filename)
 	{
 		// Check if texture was already loaded
-		std::map<std::string, TexId>::iterator it = textureMap.find(filename);
-		TexId texId;
-		texId.id = -1;
+		std::map<std::string, int>::iterator it = textureMap.find(filename);
+		int id = -1;
 
 		if (it == textureMap.end()) // New Texture
 		{
-			switch (type)
-			{
-				case TextureType::albedo:
-					texId.id = albedoMapTexCnt++;
-					break;
-				case TextureType::metallic_roughness:
-					texId.id = metallicRoughnessMapTexCnt++;
-					break;
-				case TextureType::normal:
-					texId.id = normalMapTexCnt++;
-					break;
-			}
+			id = textures.size();
 
 			Texture *texture = new Texture;
 
-			if (texture->loadTexture(filename, type))
+			if (texture->loadTexture(filename))
 			{
-				texId.type = type;
 				textures.push_back(texture);
-				textureMap[filename] = texId;
+				textureMap[filename] = id;
 			}
 			else
-				texId.id = -1;
+				id = -1;
 		}
 		else // Existing Mesh
 		{
-			texId.id = meshMap[filename];
+			id = meshMap[filename];
 		}
 
-		return texId;
+		return id;
 	}
 
 	int Scene::addMaterial(const Material& material)
@@ -95,6 +82,9 @@ namespace GLSLPT
 		hdrData = HDRLoader::load(filename.c_str());
 		if (hdrData == nullptr)
 			printf("Unable to load HDR\n");
+		else
+			renderOptions.useEnvMap = true;
+		
 	}
 
 	int Scene::addMeshInstance(const MeshInstance &meshInstance)
@@ -102,26 +92,6 @@ namespace GLSLPT
 		int id = meshInstances.size();
 		meshInstances.push_back(meshInstance);
 		return id;
-	}
-
-	int Scene::setTexture(int matId, TexId texId)
-	{
-		if (matId >= materials.size() || matId < 0)
-			return -1;
-
-		switch (texId.type)
-		{
-			case TextureType::albedo:
-				materials[matId].albedoTexID = texId.id;
-				break;
-			case TextureType::metallic_roughness:
-				materials[matId].metallicRoughnessTexID = texId.id;
-				break;
-			case TextureType::normal:
-				materials[matId].normalmapTexID = texId.id;
-				break;
-		}
-		return 0;
 	}
 
 	int Scene::addLight(const Light &light)
@@ -268,19 +238,7 @@ namespace GLSLPT
 			texWidth = textures[i]->width;
 			texHeight = textures[i]->height;
 			int texSize = texWidth * texHeight;
-
-			switch (textures[i]->texType)
-			{
-				case TextureType::albedo:
-					albedoMapTexArray.insert(albedoMapTexArray.end(), &textures[i]->texData[0], &textures[i]->texData[texSize * 3]);
-					break;
-				case TextureType::metallic_roughness:
-					metallicRoughnessMapTexArray.insert(metallicRoughnessMapTexArray.end(), &textures[i]->texData[0], &textures[i]->texData[texSize * 3]);
-					break;
-				case TextureType::normal:
-					normalMapTexArray.insert(normalMapTexArray.end(), &textures[i]->texData[0], &textures[i]->texData[texSize * 3]);
-					break;
-			}
+			textureMapsArray.insert(textureMapsArray.end(), &textures[i]->texData[0], &textures[i]->texData[texSize * 3]);
 		}
 	}
 }

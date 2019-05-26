@@ -22,9 +22,7 @@ uniform samplerBuffer uvTex;
 uniform samplerBuffer materialsTex;
 uniform samplerBuffer transformsTex;
 uniform samplerBuffer lightsTex;
-uniform sampler2DArray albedoMapTex;
-uniform sampler2DArray metallicRoughnessMapTex;
-uniform sampler2DArray normalMapTex;
+uniform sampler2DArray textureMapsArrayTex;
 
 uniform sampler2D hdrTex;
 uniform sampler1D hdrMarginalDistTex;
@@ -534,14 +532,14 @@ void GetMaterialsAndTextures(inout State state, in Ray r)
 	texUV.y = 1.0 - texUV.y;
 
 	if (int(mat.texIDs.x) >= 0)
-		mat.albedo.xyz *= pow(texture(albedoMapTex, vec3(texUV, int(mat.texIDs.x))).xyz, vec3(2.2));
+		mat.albedo.xyz *= pow(texture(textureMapsArrayTex, vec3(texUV, int(mat.texIDs.x))).xyz, vec3(2.2));
 
 	if (int(mat.texIDs.y) >= 0)
-		mat.param.xy = pow(texture(metallicRoughnessMapTex, vec3(texUV, int(mat.texIDs.y))).zy, vec2(2.2));
+		mat.param.xy = pow(texture(textureMapsArrayTex, vec3(texUV, int(mat.texIDs.y))).zy, vec2(2.2));
 
 	if (int(mat.texIDs.z) >= 0)
 	{
-		vec3 nrm = texture(normalMapTex, vec3(texUV, int(mat.texIDs.z))).xyz;
+		vec3 nrm = texture(textureMapsArrayTex, vec3(texUV, int(mat.texIDs.z))).xyz;
 		nrm = normalize(nrm * 2.0 - 1.0);
 
 		// Orthonormal Basis
@@ -843,7 +841,7 @@ void sampleLight(in Light light, inout LightSampleRec lightSampleRec)
 float EnvPdf(in Ray r)
 //-----------------------------------------------------------------------
 {
-	float theta = acos(r.direction.y);
+	float theta = acos(clamp(r.direction.y, -1.0, 1.0));
 	vec2 uv = vec2((PI + atan(r.direction.z, r.direction.x)) * (1.0 / TWO_PI), theta * (1.0 / PI));
 	float pdf = texture(hdrCondDistTex, uv).y * texture(hdrMarginalDistTex, uv.y).y;
 	return (pdf * hdrResolution) / (2.0 * PI * PI * sin(theta));
@@ -972,6 +970,7 @@ vec3 PathTrace(Ray r)
 
 	for (int depth = 0; depth < maxDepth; depth++)
 	{
+		float lightPdf = 1.0f;
 		state.depth = depth;
 		float t = SceneIntersect(r, state, lightSampleRec);
 
@@ -984,7 +983,7 @@ vec3 PathTrace(Ray r)
 
 				if (depth > 0 && !state.specularBounce)
 				{
-					float lightPdf = EnvPdf(r);
+					lightPdf = EnvPdf(r);
 					misWeight = powerHeuristic(bsdfSampleRec.pdf, lightPdf);
 				}
 				radiance += misWeight * texture(hdrTex, uv).xyz * throughput * hdrMultiplier;

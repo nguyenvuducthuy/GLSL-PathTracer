@@ -13,9 +13,7 @@ namespace GLSLPT
         return new Program(shaders);
     }
 
-    Renderer::Renderer(const Scene *scene, const std::string& shadersDirectory) : albedoMapTex(0)
-        , metallicRoughnessMapTex(0)
-        , normalMapTex(0)
+    Renderer::Renderer(const Scene *scene, const std::string& shadersDirectory) : textureMapsArrayTex(0)
         , hdrTex(0)
         , hdrMarginalDistTex(0)
         , hdrConditionalDistTex(0)
@@ -46,9 +44,7 @@ namespace GLSLPT
         glDeleteTextures(1, &materialsTex);
 		glDeleteTextures(1, &transformsTex);
 		glDeleteTextures(1, &lightsTex);
-        glDeleteTextures(1, &albedoMapTex);
-        glDeleteTextures(1, &metallicRoughnessMapTex);
-		glDeleteTextures(1, &normalMapTex);
+        glDeleteTextures(1, &textureMapsArrayTex);
         glDeleteTextures(1, &hdrTex);
         glDeleteTextures(1, &hdrMarginalDistTex);
         glDeleteTextures(1, &hdrConditionalDistTex);
@@ -166,35 +162,12 @@ namespace GLSLPT
             glTexBuffer(GL_TEXTURE_BUFFER, GL_RGB32F, lightsBuffer);
         }
 
-        // Albedo Texture
-        if (scene->albedoMapTexCnt > 0)
+        if (scene->textures.size() > 0)
         {
-            glGenTextures(1, &albedoMapTex);
+            glGenTextures(1, &textureMapsArrayTex);
             glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D_ARRAY, albedoMapTex);
-            glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGB8, scene->texWidth, scene->texHeight, scene->albedoMapTexCnt, 0, GL_RGB, GL_UNSIGNED_BYTE, &scene->albedoMapTexArray[0]);
-            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
-        }
-
-        //Metallic Roughness
-        if (scene->metallicRoughnessMapTexCnt > 0)
-        {
-            glGenTextures(1, &metallicRoughnessMapTex);
-            glBindTexture(GL_TEXTURE_2D_ARRAY, metallicRoughnessMapTex);
-            glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGB8, scene->texWidth, scene->texHeight, scene->metallicRoughnessMapTexCnt, 0, GL_RGB, GL_UNSIGNED_BYTE, &scene->metallicRoughnessMapTexArray[0]);
-            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
-        }
-
-        //NormalMap
-        if (scene->normalMapTexCnt > 0)
-        {
-            glGenTextures(1, &normalMapTex);
-            glBindTexture(GL_TEXTURE_2D_ARRAY, normalMapTex);
-            glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGB8, scene->texWidth, scene->texHeight, scene->normalMapTexCnt, 0, GL_RGB, GL_UNSIGNED_BYTE, &scene->normalMapTexArray[0]);
+            glBindTexture(GL_TEXTURE_2D_ARRAY, textureMapsArrayTex);
+            glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGB8, scene->texWidth, scene->texHeight, scene->textures.size(), 0, GL_RGB, GL_UNSIGNED_BYTE, &scene->textureMapsArray[0]);
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
             glBindTexture(GL_TEXTURE_2D_ARRAY, 0);

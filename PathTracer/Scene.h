@@ -17,12 +17,6 @@ namespace GLSLPT
 {
     class Camera;
 
-	struct TexId
-	{
-		int id;
-		TextureType type;
-	};
-
 	enum LightType
 	{
 		AreaLight,
@@ -49,10 +43,9 @@ namespace GLSLPT
 		~Scene() { delete camera; delete sceneBvh; };
         void addCamera(glm::vec3 pos, glm::vec3 lookAt, float fov);
 		int addMesh(const std::string &filename);
-		TexId addTexture(const std::string &filename, TextureType type);
+		int addTexture(const std::string &filename);
 		int addMaterial(const Material &material);
 		int addMeshInstance(const MeshInstance &meshInstance);
-		int setTexture(int matID, TexId texId);
 		int addLight(const Light &light);
 		void addHDR(const std::string &filename);
 		void createAccelerationStructures();
@@ -90,17 +83,12 @@ namespace GLSLPT
 
 		//Texture Data
 		std::vector<Texture *> textures;
-		std::vector<unsigned char> albedoMapTexArray;
-		std::vector<unsigned char> metallicRoughnessMapTexArray;
-		std::vector<unsigned char> normalMapTexArray;
-		int albedoMapTexCnt = 0;
-		int metallicRoughnessMapTexCnt = 0;
-		int normalMapTexCnt = 0;
+		std::vector<unsigned char> textureMapsArray;
 		int texWidth, texHeight; // TODO: allow textures of different sizes
 
 	private:
 		std::map<std::string, int> meshMap;
-		std::map<std::string, TexId> textureMap;
+		std::map<std::string, int> textureMap;
 		RadeonRays::Bvh *sceneBvh;
 		void createBLAS();
 		void createTLAS();

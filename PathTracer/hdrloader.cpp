@@ -117,7 +117,7 @@ void HDRLoader::buildDistributions(HDRData* res)
 	{
 		for (int i = 0; i < width; i++)
 		{
-			float invWidth = (float)i / width;
+			float invWidth = (float)(i+1) / width;
 			int col = LowerBound(cdf2D, j*width, (j + 1)*width, invWidth) - j * width;
 			res->conditionalDistData[j*width + i].x = col / (float)width;
 			res->conditionalDistData[j*width + i].y = pdf2D[j*width + i];

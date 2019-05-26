@@ -62,13 +62,9 @@ namespace GLSLPT
 		int glass_id = scene->addMaterial(glass);
 		int emissive_id = scene->addMaterial(emissive);
 
-		TexId headAlbedo = scene->addTexture("./assets/Teapot/textures/01_Head_Base_Color.png", TextureType::albedo);
-		TexId bodyAlbedo = scene->addTexture("./assets/Teapot/textures/02_Body_Base_Color.png", TextureType::albedo);
-		TexId baseAlbedo = scene->addTexture("./assets/Teapot/textures/03_Base_Base_Color.png", TextureType::albedo);
-
-		scene->setTexture(white_id, headAlbedo);
-		scene->setTexture(white_id, bodyAlbedo);
-		scene->setTexture(white_id, baseAlbedo);
+		int headAlbedo = scene->addTexture("./assets/Teapot/textures/01_Head_Base_Color.png");
+		int bodyAlbedo = scene->addTexture("./assets/Teapot/textures/02_Body_Base_Color.png");
+		int baseAlbedo = scene->addTexture("./assets/Teapot/textures/03_Base_Base_Color.png");
 
 		//scene->addCamera(glm::vec3(0.3f, 0.11f, 0.0f), glm::vec3(0.2f, 0.095f, 0.0f), 16.0f);
 		

@@ -6,22 +6,14 @@
 
 namespace GLSLPT
 {	
-	enum TextureType
-	{
-		albedo,
-		metallic_roughness,
-		normal
-	};
-
 	class Texture
 	{
 	public:
 		Texture() : texData(nullptr) {};
 		~Texture() { delete texData; }
 
-		bool loadTexture(const std::string &filename, TextureType type);
+		bool loadTexture(const std::string &filename);
 		
-		TextureType texType;
 		int width, height;
 
 		// Texture Data
