@@ -17,6 +17,7 @@ namespace GLSLPT
 
     public:
         TiledRenderer(Scene *scene, const std::string& shadersDirectory);
+		void rasterizeMeshes(Program *shader);
         ~TiledRenderer();
         
         void init();

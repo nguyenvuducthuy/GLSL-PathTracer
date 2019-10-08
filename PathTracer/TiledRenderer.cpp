@@ -16,6 +16,30 @@ namespace GLSLPT
     {
     }
 
+	void TiledRenderer::rasterizeMeshes(Program *shader)
+	{
+		for (int i = 0; i < scene->meshInstances.size(); i++)
+		{
+			int mesh_id = scene->meshInstances[i].meshID;
+
+			glm::mat4x4 viewMatrix, projectionMatrix;
+			scene->camera->computeViewProjectionMatrix(glm::value_ptr(viewMatrix), glm::value_ptr(projectionMatrix), 1280.0f / 720.0f);
+			glm::mat4x4 modelMatix = scene->meshInstances[i].transform;
+
+			shader->use();
+			glUniformMatrix4fv(glGetUniformLocation(shader->object(), "projection"), 1, false, glm::value_ptr(projectionMatrix));
+			glUniformMatrix4fv(glGetUniformLocation(shader->object(), "view"), 1, false, glm::value_ptr(viewMatrix));
+			glUniformMatrix4fv(glGetUniformLocation(shader->object(), "model"), 1, false, glm::value_ptr(modelMatix));
+			glUniformMatrix3fv(glGetUniformLocation(shader->object(), "normalMatrix"), 1, false, glm::value_ptr(glm::transpose(glm::inverse(glm::mat3x3(viewMatrix * modelMatix)))));
+			glUniform1i(glGetUniformLocation(shader->object(), "textureIndex"), scene->materials[scene->meshInstances[i].materialID].albedoTexID);
+			glUniform3fv(glGetUniformLocation(shader->object(), "albedo"), 1, glm::value_ptr(scene->materials[scene->meshInstances[i].materialID].albedo));
+
+			shader->stopUsing();
+
+			scene->meshes[mesh_id]->draw(shader);
+		}
+	}
+
     void TiledRenderer::init()
     {
 		if (initialized)
@@ -236,7 +260,7 @@ namespace GLSLPT
 				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 				glViewport(0, 0, screenSize.x, screenSize.y);
 
-				scene->rasterizeMeshes(gBufferShader);
+				rasterizeMeshes(gBufferShader);
 
 				glBindFramebuffer(GL_READ_FRAMEBUFFER, gBufferFBO);
 				glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
@@ -292,7 +316,7 @@ namespace GLSLPT
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			glViewport(0, 0, screenSize.x, screenSize.y);
 
-			scene->rasterizeMeshes(gBufferShader);
+			rasterizeMeshes(gBufferShader);
 
 			glBindFramebuffer(GL_READ_FRAMEBUFFER, gBufferFBO);
 			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);

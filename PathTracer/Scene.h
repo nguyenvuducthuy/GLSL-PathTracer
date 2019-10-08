@@ -12,9 +12,6 @@
 #include "bvh_translator.h"
 #include "Texture.h"
 #include "Material.h"
-#include <glm/glm.hpp>
-#include <glm/gtc/type_ptr.hpp>
-#include <GL/gl3w.h>
 
 namespace GLSLPT
 {
@@ -58,7 +55,6 @@ namespace GLSLPT
 		void addHDR(const std::string &filename);
 		void createAccelerationStructures();
 		void rebuildInstancesData();
-		void rasterizeMeshes(Program *shader);
 
 		//Options
 		RenderOptions renderOptions;
