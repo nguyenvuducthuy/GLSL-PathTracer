@@ -935,6 +935,9 @@ vec3 PathTrace(Ray r)
 			{
 				float misWeight = 1.0f;
 				vec2 uv = vec2((PI + atan(r.direction.z, r.direction.x)) * (1.0 / TWO_PI), acos(r.direction.y) * (1.0 / PI));
+				//float m = 2. * sqrt(pow(r.direction.x, 2.) + pow(r.direction.y, 2.) + pow(r.direction.z + 1., 2.));
+				//vec2 uv = r.direction.xy / m + .5;
+				//uv.y = -uv.y;
 
 				if (depth > 0 && !state.specularBounce)
 				{
@@ -1014,8 +1017,11 @@ void main(void)
 	jitter /= (screenResolution * 0.5);
 	vec2 d = coords + jitter;
 
-	d.x *= screenResolution.x / screenResolution.y * tan(camera.fov / 2.0);
-	d.y *= tan(camera.fov / 2.0);
+	//d.x *= screenResolution.x / screenResolution.y * tan(camera.fov / 2.0) * 1.16f;
+	//d.y *= 2.2f * atan(camera.fov / 2.0) / (screenResolution.x / screenResolution.y);
+
+	d.x *= screenResolution.x / screenResolution.y * tan(camera.fov / 2.0) * 1.16f;
+	d.y *= 2.2f * atan(camera.fov / 2.0) / (screenResolution.x / screenResolution.y);
 	vec3 rayDir = normalize(d.x * camera.right + d.y * camera.up + camera.forward);
 
 	Ray ray = Ray(camera.position, rayDir);

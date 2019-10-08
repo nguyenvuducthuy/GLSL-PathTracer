@@ -171,6 +171,30 @@ namespace GLSLPT
 		instancesModified = true;
 	}
 
+	void Scene::rasterizeMeshes(Program *shader)
+	{
+		for (int i = 0; i < meshInstances.size(); i++)
+		{
+			int mesh_id = meshInstances[i].meshID;
+
+			glm::mat4x4 viewMatrix, projectionMatrix;
+			camera->computeViewProjectionMatrix(glm::value_ptr(viewMatrix), glm::value_ptr(projectionMatrix), 1280.0f / 720.0f);
+			glm::mat4x4 modelMatix = meshInstances[i].transform;
+
+			shader->use();
+			glUniformMatrix4fv(glGetUniformLocation(shader->object(), "projection"), 1, false, glm::value_ptr(projectionMatrix));
+			glUniformMatrix4fv(glGetUniformLocation(shader->object(), "view"), 1, false, glm::value_ptr(viewMatrix));
+			glUniformMatrix4fv(glGetUniformLocation(shader->object(), "model"), 1, false, glm::value_ptr(modelMatix));
+			glUniformMatrix3fv(glGetUniformLocation(shader->object(), "normalMatrix"), 1, false, glm::value_ptr(glm::transpose(glm::inverse(glm::mat3x3(viewMatrix * modelMatix)))));
+			glUniform1i(glGetUniformLocation(shader->object(), "textureIndex"), materials[meshInstances[i].materialID].albedoTexID);
+			glUniform3fv(glGetUniformLocation(shader->object(), "albedo"), 1, glm::value_ptr(materials[meshInstances[i].materialID].albedo));
+
+			shader->stopUsing();
+
+			meshes[mesh_id]->draw(shader);
+		}
+	}
+
 	void Scene::createAccelerationStructures()
 	{
 		createBLAS();

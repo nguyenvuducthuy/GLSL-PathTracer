@@ -5,12 +5,12 @@
 
 namespace GLSLPT
 {
-    TiledRenderer::TiledRenderer(Scene *scene, const std::string& shadersDirectory) : Renderer(scene, shadersDirectory)
-        , numTilesX(scene->renderOptions.numTilesX)
-        , numTilesY(scene->renderOptions.numTilesY)
-        , maxDepth(scene->renderOptions.maxDepth)
-    {
-    }
+	TiledRenderer::TiledRenderer(Scene *scene, const std::string& shadersDirectory) : Renderer(scene, shadersDirectory)
+		, numTilesX(scene->renderOptions.numTilesX)
+		, numTilesY(scene->renderOptions.numTilesY)
+		, maxDepth(scene->renderOptions.maxDepth)
+	{
+	}
 
     TiledRenderer::~TiledRenderer() 
     {
@@ -18,10 +18,10 @@ namespace GLSLPT
 
     void TiledRenderer::init()
     {
-        if (initialized)
-            return;
+		if (initialized)
+			return;
 
-        Renderer::init();
+		Renderer::init();
 
 		sampleCounter = 1;
 		currentBuffer = 0;
@@ -32,22 +32,28 @@ namespace GLSLPT
 		tileX = 0;
 		tileY = numTilesY - 1;
 
+		//Generate buffers for Meshes
+		for (int i = 0; i < scene->meshes.size(); i++)
+			scene->meshes[i]->generateBuffers();
+
         //----------------------------------------------------------
         // Shaders
         //----------------------------------------------------------
 
 		//Todo : Avoid code duplication for Tiled and Progressive shaders 
+		gBufferShader = loadShaders(shadersDirectory + "gVert.glsl", shadersDirectory + "gFrag.glsl");
 		pathTraceShader = loadShaders(shadersDirectory + "PathTraceTiledVert.glsl", shadersDirectory + "PathTraceTiledFrag.glsl");
-		pathTraceShaderLowRes = loadShaders(shadersDirectory + "PathTraceProgressiveVert.glsl", shadersDirectory + "PathTraceProgressiveFragSimplified.glsl");
+		outputShader = loadShaders(shadersDirectory + "OutputVert.glsl", shadersDirectory + "OutputFrag.glsl");
 		accumShader = loadShaders(shadersDirectory + "AccumVert.glsl", shadersDirectory + "AccumFrag.glsl");
 		tileOutputShader = loadShaders(shadersDirectory + "TileOutputVert.glsl", shadersDirectory + "TileOutputFrag.glsl");
 		outputShader = loadShaders(shadersDirectory + "OutputVert.glsl", shadersDirectory + "OutputFrag.glsl");
 
 		printf("Debug sizes : %d %d - %d %d\n", tileWidth, tileHeight, screenSize.x, screenSize.y);
+
         //----------------------------------------------------------
         // FBO Setup
         //----------------------------------------------------------
-	    //Create FBOs for path trace shader (Tiled)
+		//Create FBOs for path trace shader (Tiled)
 		printf("Buffer pathTraceFBO\n");
 		glGenFramebuffers(1, &pathTraceFBO);
 		glBindFramebuffer(GL_FRAMEBUFFER, pathTraceFBO);
@@ -61,21 +67,26 @@ namespace GLSLPT
 		glBindTexture(GL_TEXTURE_2D, 0);
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pathTraceTexture, 0);
 
-		//Create FBOs for path trace shader (Progressive)
-		printf("Buffer pathTraceFBOLowRes\n");
-		glGenFramebuffers(1, &pathTraceFBOLowRes);
-		glBindFramebuffer(GL_FRAMEBUFFER, pathTraceFBOLowRes);
+	    //Create FBOs for gBuffer
+		printf("Buffer gBufferFBO\n");
+		glGenFramebuffers(1, &gBufferFBO);
+		glBindFramebuffer(GL_FRAMEBUFFER, gBufferFBO);
 
-		//Create Texture for FBO
-		glGenTextures(1, &pathTraceTextureLowRes);
-		glBindTexture(GL_TEXTURE_2D, pathTraceTextureLowRes);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, screenSize.x / 2, screenSize.y / 2, 0, GL_RGBA, GL_FLOAT, 0);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		//Create texture for albedo
+		glGenTextures(1, &gBufferTexture);
+		glBindTexture(GL_TEXTURE_2D, gBufferTexture);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, screenSize.x, screenSize.y, 0, GL_RGBA, GL_FLOAT, 0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glBindTexture(GL_TEXTURE_2D, 0);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pathTraceTextureLowRes, 0);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, gBufferTexture, 0);
+
+		unsigned int rboDepth;
+		glGenRenderbuffers(1, &rboDepth);
+		glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
+		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, screenSize.x, screenSize.y);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboDepth);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		//Create FBOs for accum buffer
 		printf("Buffer accumFBO\n");
@@ -142,30 +153,14 @@ namespace GLSLPT
 
 		pathTraceShader->stopUsing();
 
-		pathTraceShaderLowRes->use();
-		shaderObject = pathTraceShaderLowRes->object();
-
-		glUniform1f(glGetUniformLocation(shaderObject, "hdrResolution"), scene->hdrData == nullptr ? 0 : float(scene->hdrData->width * scene->hdrData->height));
-		glUniform1i(glGetUniformLocation(shaderObject, "topBVHIndex"), scene->bvhTranslator.topLevelIndexPackedXY);
-		glUniform1i(glGetUniformLocation(shaderObject, "vertIndicesSize"), scene->indicesTexWidth);
-		glUniform2f(glGetUniformLocation(shaderObject, "screenResolution"), float(screenSize.x), float(screenSize.y));
-		glUniform1i(glGetUniformLocation(shaderObject, "numOfLights"), numOfLights);
-		glUniform1i(glGetUniformLocation(shaderObject, "accumTexture"), 0);
-		glUniform1i(glGetUniformLocation(shaderObject, "BVH"), 1);
-		glUniform1i(glGetUniformLocation(shaderObject, "BBoxMin"), 2);
-		glUniform1i(glGetUniformLocation(shaderObject, "BBoxMax"), 3);
-		glUniform1i(glGetUniformLocation(shaderObject, "vertexIndicesTex"), 4);
-		glUniform1i(glGetUniformLocation(shaderObject, "verticesTex"), 5);
-		glUniform1i(glGetUniformLocation(shaderObject, "normalsTex"), 6);
+		gBufferShader->use();
+		shaderObject = gBufferShader->object();
 		glUniform1i(glGetUniformLocation(shaderObject, "materialsTex"), 7);
-		glUniform1i(glGetUniformLocation(shaderObject, "transformsTex"), 8);
 		glUniform1i(glGetUniformLocation(shaderObject, "lightsTex"), 9);
 		glUniform1i(glGetUniformLocation(shaderObject, "textureMapsArrayTex"), 10);
 		glUniform1i(glGetUniformLocation(shaderObject, "hdrTex"), 11);
-		glUniform1i(glGetUniformLocation(shaderObject, "hdrMarginalDistTex"), 12);
-		glUniform1i(glGetUniformLocation(shaderObject, "hdrCondDistTex"), 13);
-
-		pathTraceShaderLowRes->stopUsing();
+		glUniform1i(glGetUniformLocation(shaderObject, "numOfLights"), numOfLights);
+		gBufferShader->stopUsing();
 
     }
 
@@ -175,22 +170,23 @@ namespace GLSLPT
             return;
 
 		glDeleteTextures(1, &pathTraceTexture);
-		glDeleteTextures(1, &pathTraceTextureLowRes);
+		glDeleteTextures(1, &gBufferTexture);
 		glDeleteTextures(1, &accumTexture);
 		glDeleteTextures(1, &tileOutputTexture[0]);
 		glDeleteTextures(1, &tileOutputTexture[1]);
 
 		glDeleteFramebuffers(1, &pathTraceFBO);
-		glDeleteFramebuffers(1, &pathTraceFBOLowRes);
+		glDeleteFramebuffers(1, &gBufferFBO);
 		glDeleteFramebuffers(1, &accumFBO);
 		glDeleteFramebuffers(1, &outputFBO);
 
 		delete pathTraceShader;
+		delete gBufferShader;
 		delete accumShader;
 		delete tileOutputShader;
 		delete outputShader;
 
-        Renderer::finish();
+		Renderer::finish();
     }
 
     void TiledRenderer::render()
@@ -235,9 +231,18 @@ namespace GLSLPT
 			// Render to low res buffer once to avoid ghosting from previous frame
 			if (scene->instancesModified)
 			{
-				glBindFramebuffer(GL_FRAMEBUFFER, pathTraceFBOLowRes);
-				glViewport(0, 0, screenSize.x / 2, screenSize.y / 2);
-				quad->Draw(pathTraceShaderLowRes);
+				glBindFramebuffer(GL_FRAMEBUFFER, gBufferFBO);
+				glClearColor(0.0, 0.0, 0.0, 1.0);
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+				glViewport(0, 0, screenSize.x, screenSize.y);
+
+				scene->rasterizeMeshes(gBufferShader);
+
+				glBindFramebuffer(GL_READ_FRAMEBUFFER, gBufferFBO);
+				glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+				glBlitFramebuffer(0, 0, screenSize.x, screenSize.y, 0, 0, screenSize.x, screenSize.y, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+				glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 				scene->instancesModified = false;
 			}
 
@@ -282,9 +287,17 @@ namespace GLSLPT
 		}
 		else
 		{
-			glBindFramebuffer(GL_FRAMEBUFFER, pathTraceFBOLowRes);
-			glViewport(0, 0, screenSize.x / 2, screenSize.y / 2);
-			quad->Draw(pathTraceShaderLowRes);
+			glBindFramebuffer(GL_FRAMEBUFFER, gBufferFBO);
+			glClearColor(0.0, 0.0, 0.0, 1.0);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			glViewport(0, 0, screenSize.x, screenSize.y);
+
+			scene->rasterizeMeshes(gBufferShader);
+
+			glBindFramebuffer(GL_READ_FRAMEBUFFER, gBufferFBO);
+			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+			glBlitFramebuffer(0, 0, screenSize.x, screenSize.y, 0, 0, screenSize.x, screenSize.y, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		}
     }
 
@@ -302,14 +315,14 @@ namespace GLSLPT
 		else
 		{
 			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, pathTraceTextureLowRes);
+			glBindTexture(GL_TEXTURE_2D, gBufferTexture);
 			quad->Draw(outputShader);
 		}
     }
 
     float TiledRenderer::getProgress() const
     {
-        return float((numTilesY - tileY - 1) * numTilesX + tileX) / float(numTilesX * numTilesY);
+		return float((numTilesY - tileY - 1) * numTilesX + tileX) / float(numTilesX * numTilesY);
     }
 
     void TiledRenderer::update(float secondsElapsed)
@@ -333,13 +346,13 @@ namespace GLSLPT
 			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tileOutputTexture[1 - currentBuffer], 0);
 			glViewport(0, 0, screenSize.x, screenSize.y);
 			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, pathTraceTextureLowRes);
+			glBindTexture(GL_TEXTURE_2D, gBufferTexture);
 			quad->Draw(accumShader);
 
 			/*glBindFramebuffer(GL_FRAMEBUFFER, accumFBO);
 			glViewport(0, 0, screenSize.x, screenSize.y);
 			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, pathTraceTextureLowRes);
+			glBindTexture(GL_TEXTURE_2D, gBufferTexture);
 			quad->Draw(accumShader);*/
 
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -350,7 +363,6 @@ namespace GLSLPT
 			r2 = ((float)rand() / (RAND_MAX));
 			r3 = ((float)rand() / (RAND_MAX));
 		}
-
 
 		GLuint shaderObject;
 
@@ -371,20 +383,13 @@ namespace GLSLPT
 		glUniform1i(glGetUniformLocation(shaderObject, "tileY"), tileY);
 		pathTraceShader->stopUsing();
 
-		pathTraceShaderLowRes->use();
-		shaderObject = pathTraceShaderLowRes->object();
-		glUniform3fv(glGetUniformLocation(shaderObject, "camera.position"), 1, glm::value_ptr(scene->camera->position));
-		glUniform3fv(glGetUniformLocation(shaderObject, "camera.right"), 1, glm::value_ptr(scene->camera->right));
-		glUniform3fv(glGetUniformLocation(shaderObject, "camera.up"), 1, glm::value_ptr(scene->camera->up));
-		glUniform3fv(glGetUniformLocation(shaderObject, "camera.forward"), 1, glm::value_ptr(scene->camera->forward));
-		glUniform1f(glGetUniformLocation(shaderObject, "camera.fov"), scene->camera->fov);
-		glUniform1f(glGetUniformLocation(shaderObject, "camera.focalDist"), scene->camera->focalDist);
-		glUniform1f(glGetUniformLocation(shaderObject, "camera.aperture"), scene->camera->aperture);
+		gBufferShader->use();
+		shaderObject = gBufferShader->object();
+		glUniform3fv(glGetUniformLocation(shaderObject, "cameraPos"), 1, glm::value_ptr(scene->camera->position));
+		glUniform1f(glGetUniformLocation(shaderObject, "hdrMultiplier"), scene->renderOptions.hdrMultiplier);
 		glUniform3fv(glGetUniformLocation(shaderObject, "randomVector"), 1, glm::value_ptr(glm::vec3(r1, r2, r3)));
 		glUniform1i(glGetUniformLocation(shaderObject, "useEnvMap"), scene->hdrData == nullptr ? false : scene->renderOptions.useEnvMap);
-		glUniform1f(glGetUniformLocation(shaderObject, "hdrMultiplier"), scene->renderOptions.hdrMultiplier);
-		glUniform1i(glGetUniformLocation(shaderObject, "maxDepth"), maxDepth);
-		pathTraceShaderLowRes->stopUsing();
+		gBufferShader->stopUsing();
 
 		outputShader->use();
 		shaderObject = outputShader->object();
