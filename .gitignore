@@ -8,3 +8,4 @@ Nvidia-SBVH/Release/
 Nvidia-SBVH/Debug/
 thirdparty/SOIL/Release/
 thirdparty/SOIL/Debug/
+build/
